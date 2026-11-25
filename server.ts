@@ -1,12 +1,11 @@
 import { createServer } from "http";
-import { parse } from "url";
 import next from "next";
 import { WebSocketServer, WebSocket } from "ws";
 import type { Duplex } from "stream";
 import type { DeviceType, SignalingMessage } from "./lib/types";
 
 const dev = process.env.NODE_ENV !== "production";
-const hostname = process.env.HOSTNAME || "0.0.0.0";
+const hostname = "0.0.0.0";
 const port = parseInt(process.env.PORT || "3000", 10);
 
 interface PeerRecord {
@@ -36,8 +35,7 @@ const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
   const server = createServer((req, res) => {
-    const parsedUrl = parse(req.url || "/", true);
-    handle(req, res, parsedUrl);
+    handle(req, res);
   });
 
   // Disable Nagle's algorithm for minimal TCP latency
@@ -51,7 +49,7 @@ app.prepare().then(() => {
   });
 
   server.on("upgrade", (req, socket: Duplex, head) => {
-    const { pathname } = parse(req.url || "/", true);
+    const pathname = (req.url || "/").split("?")[0];
     if (pathname === "/ws") {
       wss.handleUpgrade(req, socket, head, (ws) => {
         wss.emit("connection", ws, req);
