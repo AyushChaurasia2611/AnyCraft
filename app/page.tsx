@@ -462,23 +462,14 @@ export default function HomePage() {
   };
 
   const captureScreenStream = async (): Promise<MediaStream> => {
-    try {
-      return await navigator.mediaDevices.getDisplayMedia({
-        video: {
-          frameRate: { ideal: deviceType === "mobile" ? 30 : 60 },
-        },
-        audio: deviceType !== "mobile",
-      });
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "NotAllowedError") {
-        throw err;
-      }
-      // Fallback for browsers rejecting constraints or audio
-      return await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-        audio: false,
-      });
+    if (deviceType === "mobile" || deviceType === "tablet") {
+      // Mobile browsers require a direct user-gesture call with simple { video: true }
+      return await navigator.mediaDevices.getDisplayMedia({ video: true });
     }
+    return await navigator.mediaDevices.getDisplayMedia({
+      video: { frameRate: { ideal: 60 } },
+      audio: true,
+    });
   };
 
   // Host accepts incoming request & captures Screen or Camera
@@ -1030,6 +1021,7 @@ export default function HomePage() {
           onQualityChange={(p, m) => {
             setQuality(p);
             setContentMode(m);
+            rtcRef.current?.applyQualityToSenders(p, m);
             rtcRef.current?.sendReliable({ t: "qual", preset: p, mode: m });
           }}
           onControlEvent={(ev) => rtcRef.current?.sendControl(ev)}
