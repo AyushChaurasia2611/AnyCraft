@@ -28,6 +28,7 @@ interface RemoteViewerProps {
   remoteAlias: string;
   remoteStream: MediaStream | null;
   isSharingLocal: boolean;
+  canScreenShare?: boolean;
   stats: TelemetryStats;
   quality: QualityPreset;
   contentMode: ContentMode;
@@ -46,6 +47,7 @@ export function RemoteViewer({
   remoteAlias,
   remoteStream,
   isSharingLocal,
+  canScreenShare = true,
   stats,
   quality,
   contentMode,
@@ -319,14 +321,16 @@ export function RemoteViewer({
         <div className="flex items-center gap-1.5">
           {isSharingLocal && onSwitchSource && (
             <>
-              <button
-                onClick={() => onSwitchSource("screen")}
-                className="inline-flex items-center gap-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1.5 text-zinc-200 transition cursor-pointer"
-                title="Switch to Screen Share"
-              >
-                <MonitorUp className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Screen</span>
-              </button>
+              {canScreenShare && (
+                <button
+                  onClick={() => onSwitchSource("screen")}
+                  className="inline-flex items-center gap-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1.5 text-zinc-200 transition cursor-pointer"
+                  title="Switch to Screen Share"
+                >
+                  <MonitorUp className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Screen</span>
+                </button>
+              )}
               <button
                 onClick={() => onSwitchSource("camera")}
                 className="inline-flex items-center gap-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1.5 text-zinc-200 transition cursor-pointer"

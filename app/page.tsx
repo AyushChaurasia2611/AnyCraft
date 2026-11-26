@@ -1012,6 +1012,7 @@ export default function HomePage() {
           remoteAlias={activePeer.alias}
           remoteStream={remoteStream}
           isSharingLocal={activePeer.isHost}
+          canScreenShare={canScreenShare}
           stats={stats}
           quality={quality}
           contentMode={contentMode}
