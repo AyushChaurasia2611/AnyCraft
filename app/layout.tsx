@@ -6,6 +6,10 @@ export const metadata: Metadata = {
   description:
     "Low-latency WebRTC peer-to-peer remote desktop and mobile screen sharing built with Next.js.",
   manifest: "/manifest.json",
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/icon.svg", type: "image/svg+xml" }],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

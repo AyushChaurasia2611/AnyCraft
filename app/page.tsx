@@ -10,7 +10,6 @@ import {
   Tablet,
   ArrowRight,
   Shield,
-  Zap,
   Eye,
   EyeOff,
   Terminal,
@@ -583,9 +582,11 @@ export default function HomePage() {
       {/* Top Navbar */}
       <nav className="border-b border-zinc-800/80 bg-[#0c0c10]/90 backdrop-blur-md px-4 sm:px-8 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-600 shadow-lg shadow-red-600/25">
-            <Zap className="h-5 w-5 text-white" />
-          </div>
+          <img
+            src="/icon.svg"
+            alt="AnyCraft Logo"
+            className="h-9 w-9 rounded-xl shadow-lg shadow-red-600/20"
+          />
           <div>
             <span className="text-lg font-bold tracking-tight text-white">
               AnyCraft
