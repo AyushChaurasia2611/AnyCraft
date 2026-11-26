@@ -354,10 +354,13 @@ async def main():
             f"[AnyCraft Agent] Note: Native OS input injection targets Windows & macOS (detected {OS_NAME}).",
             file=sys.stderr,
         )
-    server = await asyncio.start_server(handle_client, "127.0.0.1", 8765)
+    servers = [await asyncio.start_server(handle_client, "127.0.0.1", 8765)]
+    try:
+        servers.append(await asyncio.start_server(handle_client, "::1", 8765))
+    except OSError:
+        pass
     print(f"AnyCraft OS Control Agent ({OS_NAME}) listening on ws://127.0.0.1:8765")
-    async with server:
-        await server.serve_forever()
+    await asyncio.gather(*(s.serve_forever() for s in servers))
 
 
 if __name__ == "__main__":

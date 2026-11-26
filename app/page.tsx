@@ -671,6 +671,15 @@ export default function HomePage() {
               </div>
             </div>
 
+            {!agentConnected && (
+              <p className="text-[11px] text-amber-300/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+                Running the agent but not seeing <strong>OS Agent Ready</strong>? Click
+                the icon to the left of the browser URL bar → <strong>Site settings</strong> →
+                set <strong>Local network</strong> / <strong>Insecure content</strong> to{" "}
+                <strong>Allow</strong>, then reload.
+              </p>
+            )}
+
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-xl bg-black/70 border border-zinc-800 p-2.5">
               <span className="text-zinc-400 shrink-0 px-1">
                 Mac 1-Line Terminal:
