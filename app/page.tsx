@@ -467,10 +467,13 @@ export default function HomePage() {
         video: {
           frameRate: { ideal: deviceType === "mobile" ? 30 : 60 },
         },
-        audio: true,
+        audio: deviceType !== "mobile",
       });
-    } catch {
-      // Mobile browsers (e.g. Android Chrome) often reject audio:true or frameRate constraints
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "NotAllowedError") {
+        throw err;
+      }
+      // Fallback for browsers rejecting constraints or audio
       return await navigator.mediaDevices.getDisplayMedia({
         video: true,
         audio: false,
