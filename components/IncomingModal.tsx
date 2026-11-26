@@ -91,6 +91,14 @@ export function IncomingModal({
             Dismiss
           </button>
         </div>
+
+        {!canScreenShare && (
+          <p className="mt-3 text-[11px] text-zinc-500 text-center">
+            This mobile browser does not expose screen capture (e.g. iOS Safari
+            blocks web screen sharing). Use Android Chrome on HTTPS for mobile
+            screen share, or use Camera above.
+          </p>
+        )}
       </div>
     </div>
   );

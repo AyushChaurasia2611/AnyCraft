@@ -17,6 +17,7 @@ import {
   Wifi,
   Clock,
   Lock,
+  Download,
 } from "lucide-react";
 import {
   formatDeskId,
@@ -71,6 +72,7 @@ export default function HomePage() {
   const [recents, setRecents] = useState<PeerInfo[]>([]);
   const [presenceMap, setPresenceMap] = useState<Record<string, boolean>>({});
   const [showAgentHelp, setShowAgentHelp] = useState(false);
+  const [copiedMacCmd, setCopiedMacCmd] = useState(false);
 
   // Optional Local OS Control Agent (ws://127.0.0.1:8765)
   const [agentConnected, setAgentConnected] = useState(false);
@@ -459,6 +461,23 @@ export default function HomePage() {
     });
   };
 
+  const captureScreenStream = async (): Promise<MediaStream> => {
+    try {
+      return await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          frameRate: { ideal: deviceType === "mobile" ? 30 : 60 },
+        },
+        audio: true,
+      });
+    } catch {
+      // Mobile browsers (e.g. Android Chrome) often reject audio:true or frameRate constraints
+      return await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: false,
+      });
+    }
+  };
+
   // Host accepts incoming request & captures Screen or Camera
   const handleAcceptIncoming = async (source: "screen" | "camera") => {
     if (!incomingReq) return;
@@ -468,12 +487,7 @@ export default function HomePage() {
     try {
       const stream =
         source === "screen"
-          ? await navigator.mediaDevices.getDisplayMedia({
-              video: {
-                frameRate: { ideal: 60, max: 60 },
-              },
-              audio: true,
-            })
+          ? await captureScreenStream()
           : await navigator.mediaDevices.getUserMedia({
               video: { facingMode: "environment", frameRate: { ideal: 30 } },
               audio: true,
@@ -508,12 +522,17 @@ export default function HomePage() {
         fromAlias: alias,
         fromDeviceType: deviceType,
       });
-    } catch {
+    } catch (err) {
+      const msg =
+        err instanceof Error && err.message
+          ? `Capture failed: ${err.message}`
+          : "Screen/Camera permission was cancelled or not supported on this browser.";
+      setErrorBanner(msg);
       signalingRef.current?.send({
         type: "connect-reject",
         targetDeskId: req.fromDeskId,
         fromDeskId: deskId,
-        reason: "Screen/Camera permission was cancelled.",
+        reason: msg,
       });
     }
   };
@@ -544,10 +563,7 @@ export default function HomePage() {
     try {
       const newStream =
         source === "screen"
-          ? await navigator.mediaDevices.getDisplayMedia({
-              video: { frameRate: { ideal: 60 } },
-              audio: false,
-            })
+          ? await captureScreenStream()
           : await navigator.mediaDevices.getUserMedia({
               video: { facingMode: "environment" },
               audio: false,
@@ -586,17 +602,20 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 text-xs">
+        <div className="flex items-center gap-2 sm:gap-3 text-xs">
           <button
             onClick={() => setShowAgentHelp((v) => !v)}
-            className={`hidden sm:inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition cursor-pointer ${
               agentConnected
                 ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                : "border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-zinc-200"
+                : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:text-white"
             }`}
           >
             <Terminal className="h-3.5 w-3.5" />
-            {agentConnected ? "OS Agent Ready" : "OS Control Agent"}
+            <span className="hidden sm:inline">
+              {agentConnected ? "OS Agent Ready" : "Download Agent"}
+            </span>
+            <span className="sm:hidden">Agent</span>
           </button>
 
           <div className="inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1.5">
@@ -620,23 +639,64 @@ export default function HomePage() {
         </div>
       </nav>
 
-      {/* Optional OS Control Agent Instructions Banner */}
+      {/* Optional OS Control Agent Download & Instructions */}
       {showAgentHelp && (
         <div className="border-b border-zinc-800 bg-[#121218] px-4 sm:px-8 py-4 text-xs text-zinc-300">
-          <div className="max-w-5xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <p className="font-semibold text-white">
-                Enable Full OS Mouse & Keyboard Control on Laptop/PC
-              </p>
-              <p className="text-zinc-400 mt-0.5">
-                Browsers sandbox OS input by default. Run the included Python bridge
-                on the host PC to allow incoming sessions to move your real cursor
-                and type anywhere:
-              </p>
+          <div className="max-w-5xl mx-auto space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <p className="font-semibold text-white">
+                  1-Click OS Mouse & Keyboard Control (Windows & Mac)
+                </p>
+                <p className="text-zinc-400 mt-0.5">
+                  Run this on the laptop/Mac you want to control. On Mac, allow
+                  Terminal in System Settings → Privacy & Security → Accessibility.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <a
+                  href="/api/agent?os=win"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-2 font-medium text-white transition"
+                >
+                  <Download className="h-3.5 w-3.5 text-red-400" />
+                  Windows (.bat)
+                </a>
+                <a
+                  href="/api/agent?os=mac"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-2 font-medium text-white transition"
+                >
+                  <Download className="h-3.5 w-3.5 text-emerald-400" />
+                  Mac (.command)
+                </a>
+              </div>
             </div>
-            <code className="rounded-lg bg-black border border-zinc-800 px-3 py-2 font-mono text-emerald-400 shrink-0">
-              python agent/anycraft_agent.py
-            </code>
+
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-xl bg-black/70 border border-zinc-800 p-2.5">
+              <span className="text-zinc-400 shrink-0 px-1">
+                Mac 1-Line Terminal:
+              </span>
+              <code className="flex-1 font-mono text-[11px] text-emerald-400 truncate">
+                {`curl -sL ${
+                  typeof window !== "undefined" ? window.location.origin : ""
+                }/api/agent -o /tmp/anycraft_agent.py && python3 /tmp/anycraft_agent.py`}
+              </code>
+              <button
+                onClick={async () => {
+                  const cmd = `curl -sL ${window.location.origin}/api/agent -o /tmp/anycraft_agent.py && python3 /tmp/anycraft_agent.py`;
+                  await navigator.clipboard?.writeText(cmd).catch(() => {});
+                  setCopiedMacCmd(true);
+                  setTimeout(() => setCopiedMacCmd(false), 1800);
+                }}
+                className="inline-flex items-center gap-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1.5 text-[11px] font-medium text-white cursor-pointer shrink-0"
+              >
+                {copiedMacCmd ? (
+                  <Check className="h-3.5 w-3.5 text-emerald-400" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
+                {copiedMacCmd ? "Copied" : "Copy"}
+              </button>
+            </div>
           </div>
         </div>
       )}
