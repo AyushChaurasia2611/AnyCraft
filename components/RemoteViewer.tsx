@@ -14,6 +14,9 @@ import {
   ShieldCheck,
   MonitorUp,
   Video,
+  SwitchCamera,
+  Mic,
+  MicOff,
 } from "lucide-react";
 import type {
   ContentMode,
@@ -39,6 +42,9 @@ interface RemoteViewerProps {
   onControlEvent: (ev: ControlEvent) => void;
   onToggleSidePanel: () => void;
   onSwitchSource?: (source: "screen" | "camera") => void;
+  onFlipCamera?: () => void;
+  micMuted?: boolean;
+  onToggleMic?: () => void;
   onDisconnect: () => void;
 }
 
@@ -58,6 +64,9 @@ export function RemoteViewer({
   onControlEvent,
   onToggleSidePanel,
   onSwitchSource,
+  onFlipCamera,
+  micMuted = false,
+  onToggleMic,
   onDisconnect,
 }: RemoteViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -69,6 +78,22 @@ export function RemoteViewer({
   const [showMobileKeys, setShowMobileKeys] = useState(false);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [cursorNorm, setCursorNorm] = useState({ x: 0.5, y: 0.5 });
+  const [elapsedSec, setElapsedSec] = useState(0);
+
+  useEffect(() => {
+    setElapsedSec(0);
+    const id = setInterval(() => setElapsedSec((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [remoteDeskId]);
+
+  const formatDuration = (sec: number) => {
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60)
+      .toString()
+      .padStart(2, "0");
+    const s = (sec % 60).toString().padStart(2, "0");
+    return h > 0 ? `${h}:${m}:${s}` : `${m}:${s}`;
+  };
 
   // Trackpad state for mobile-to-laptop control
   const lastTouchRef = useRef<{ x: number; y: number; time: number } | null>(
@@ -287,6 +312,9 @@ export function RemoteViewer({
             <span className="font-mono text-zinc-400 sm:ml-2 text-[11px]">
               {formatDeskId(remoteDeskId)}
             </span>
+            <span className="ml-2 font-mono text-emerald-400 text-[11px]">
+              {formatDuration(elapsedSec)}
+            </span>
           </div>
           {isSharingLocal && (
             <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-red-500/15 border border-red-500/30 px-2 py-0.5 text-[11px] font-medium text-red-400">
@@ -339,6 +367,33 @@ export function RemoteViewer({
                 <Video className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Cam</span>
               </button>
+              {onFlipCamera && (
+                <button
+                  onClick={onFlipCamera}
+                  className="inline-flex items-center gap-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1.5 text-zinc-200 transition cursor-pointer"
+                  title="Flip Front / Back Camera"
+                >
+                  <SwitchCamera className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Flip</span>
+                </button>
+              )}
+              {onToggleMic && (
+                <button
+                  onClick={onToggleMic}
+                  className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 transition cursor-pointer ${
+                    micMuted
+                      ? "bg-red-500/20 text-red-400"
+                      : "bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
+                  }`}
+                  title={micMuted ? "Unmute Mic" : "Mute Mic"}
+                >
+                  {micMuted ? (
+                    <MicOff className="h-3.5 w-3.5" />
+                  ) : (
+                    <Mic className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              )}
             </>
           )}
 

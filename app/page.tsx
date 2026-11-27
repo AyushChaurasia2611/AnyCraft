@@ -91,6 +91,10 @@ export default function HomePage() {
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [quality, setQuality] = useState<QualityPreset>("ultra");
   const [contentMode, setContentMode] = useState<ContentMode>("detail");
+  const [cameraFacing, setCameraFacing] = useState<"environment" | "user">(
+    "environment"
+  );
+  const [micMuted, setMicMuted] = useState(false);
   const [stats, setStats] = useState<TelemetryStats>({
     rttMs: 0,
     fps: 0,
@@ -489,7 +493,7 @@ export default function HomePage() {
         source === "screen"
           ? await captureScreenStream()
           : await navigator.mediaDevices.getUserMedia({
-              video: { facingMode: "environment", frameRate: { ideal: 30 } },
+              video: { facingMode: cameraFacing, frameRate: { ideal: 30 } },
               audio: true,
             });
 
@@ -559,13 +563,17 @@ export default function HomePage() {
     cleanupSession();
   };
 
-  const handleSwitchSource = async (source: "screen" | "camera") => {
+  const handleSwitchSource = async (
+    source: "screen" | "camera",
+    facingOverride?: "environment" | "user"
+  ) => {
     try {
+      const facing = facingOverride ?? cameraFacing;
       const newStream =
         source === "screen"
           ? await captureScreenStream()
           : await navigator.mediaDevices.getUserMedia({
-              video: { facingMode: "environment" },
+              video: { facingMode: facing, frameRate: { ideal: 30 } },
               audio: false,
             });
       const newTrack = newStream.getVideoTracks()[0];
@@ -576,6 +584,20 @@ export default function HomePage() {
     } catch {
       // Cancelled
     }
+  };
+
+  const handleFlipCamera = async () => {
+    const nextFacing = cameraFacing === "environment" ? "user" : "environment";
+    setCameraFacing(nextFacing);
+    await handleSwitchSource("camera", nextFacing);
+  };
+
+  const handleToggleMic = () => {
+    const next = !micMuted;
+    setMicMuted(next);
+    localStreamRef.current?.getAudioTracks().forEach((t) => {
+      t.enabled = !next;
+    });
   };
 
   const copyMyId = async () => {
@@ -1102,6 +1124,9 @@ export default function HomePage() {
             setUnreadCount(0);
           }}
           onSwitchSource={activePeer.isHost ? handleSwitchSource : undefined}
+          onFlipCamera={activePeer.isHost ? handleFlipCamera : undefined}
+          micMuted={micMuted}
+          onToggleMic={activePeer.isHost ? handleToggleMic : undefined}
           onDisconnect={handleDisconnect}
         />
       )}
