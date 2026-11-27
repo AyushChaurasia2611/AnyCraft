@@ -59,7 +59,16 @@ export function detectDefaultAlias(): string {
 
 export function supportsScreenShare(): boolean {
   if (typeof navigator === "undefined") return false;
-  return Boolean(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
+  const hasWeb = Boolean(
+    navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia
+  );
+  const hasNative =
+    typeof window !== "undefined" &&
+    Boolean(
+      (window as unknown as { AnyCraftNative?: { startScreenShare?: unknown } })
+        .AnyCraftNative?.startScreenShare
+    );
+  return hasWeb || hasNative;
 }
 
 export function loadOrCreateIdentity() {

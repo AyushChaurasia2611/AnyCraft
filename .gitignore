@@ -6,3 +6,8 @@ out/
 __pycache__/
 *.pyc
 .DS_Store
+desktop/node_modules/
+desktop/dist/
+mobile-android/.gradle/
+mobile-android/app/build/
+mobile-android/local.properties

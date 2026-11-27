@@ -28,6 +28,10 @@ import {
   generatePasscode,
   supportsScreenShare,
 } from "@/lib/identity";
+import {
+  captureNativeAndroidScreen,
+  isNativeMobileBridge,
+} from "@/lib/native-bridge";
 import { SignalingClient } from "@/lib/signaling";
 import { AnyCraftPeer } from "@/lib/webrtc";
 import type {
@@ -461,6 +465,9 @@ export default function HomePage() {
   };
 
   const captureScreenStream = async (): Promise<MediaStream> => {
+    if (isNativeMobileBridge()) {
+      return await captureNativeAndroidScreen();
+    }
     if (deviceType === "mobile" || deviceType === "tablet") {
       // Mobile browsers require a direct user-gesture call with simple { video: true }
       return await navigator.mediaDevices.getDisplayMedia({ video: true });
