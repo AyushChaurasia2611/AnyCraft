@@ -38,6 +38,15 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     startService(svcIntent)
                 }
+                webView.evaluateJavascript(
+                    "window.__anycraftNativeStarted && window.__anycraftNativeStarted();",
+                    null
+                )
+            } else {
+                webView.evaluateJavascript(
+                    "window.__anycraftNativeError && window.__anycraftNativeError('Screen capture permission denied.');",
+                    null
+                )
             }
         }
 

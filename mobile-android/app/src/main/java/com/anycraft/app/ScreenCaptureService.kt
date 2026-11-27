@@ -41,6 +41,14 @@ class ScreenCaptureService : Service() {
     private var workerHandler: Handler? = null
     private var lastFrameMs = 0L
 
+    private val projectionCallback = object : MediaProjection.Callback() {
+        override fun onStop() {
+            cleanup()
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -110,6 +118,9 @@ class ScreenCaptureService : Service() {
         workerThread = HandlerThread("AnyCraftCapture").apply { start() }
         workerHandler = Handler(workerThread!!.looper)
 
+        // Required on Android 14+ (API 34) before createVirtualDisplay
+        projection?.registerCallback(projectionCallback, workerHandler)
+
         imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
         imageReader?.setOnImageAvailableListener({ reader ->
             val now = System.currentTimeMillis()
@@ -164,6 +175,9 @@ class ScreenCaptureService : Service() {
         virtualDisplay = null
         imageReader?.close()
         imageReader = null
+        try {
+            projection?.unregisterCallback(projectionCallback)
+        } catch (_: Exception) {}
         projection?.stop()
         projection = null
         workerThread?.quitSafely()

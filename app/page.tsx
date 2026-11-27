@@ -585,9 +585,9 @@ export default function HomePage() {
   };
 
   return (
-    <main className="min-h-dvh flex flex-col">
+    <main className="min-h-dvh flex flex-col bg-[#09090b] bg-[radial-gradient(ellipse_at_top,_rgba(239,68,68,0.10),transparent_55%)]">
       {/* Top Navbar */}
-      <nav className="border-b border-zinc-800/80 bg-[#0c0c10]/90 backdrop-blur-md px-4 sm:px-8 py-3.5 flex items-center justify-between">
+      <nav className="sticky top-0 z-20 border-b border-zinc-800/80 bg-[#09090b]/85 backdrop-blur-xl px-4 sm:px-8 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <img
             src="/icon.svg"
@@ -595,12 +595,19 @@ export default function HomePage() {
             className="h-9 w-9 rounded-xl shadow-lg shadow-red-600/20"
           />
           <div>
-            <span className="text-lg font-bold tracking-tight text-white">
-              AnyCraft
-            </span>
-            <span className="hidden sm:inline-block ml-2 rounded-md bg-zinc-800 px-2 py-0.5 text-[11px] font-medium text-zinc-400">
-              P2P Low-Latency
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-bold tracking-tight text-white">
+                AnyCraft
+              </span>
+              <span className="hidden sm:inline-block rounded-full bg-red-500/10 border border-red-500/20 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-red-400">
+                P2P Low-Latency
+              </span>
+              {isNativeMobileBridge() && (
+                <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+                  Native App
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -902,9 +909,28 @@ export default function HomePage() {
               </form>
 
               {connectingState && (
-                <div className="mt-4 flex items-center gap-2.5 text-xs text-zinc-300">
-                  <div className="h-4 w-4 rounded-full border-2 border-red-500 border-t-transparent animate-spin" />
-                  <span>{connectingState}</span>
+                <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900/90 px-4 py-2.5 text-xs text-zinc-200">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-4 w-4 rounded-full border-2 border-red-500 border-t-transparent animate-spin" />
+                    <span>{connectingState}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cleanId = normalizeDeskId(targetIdInput);
+                      if (cleanId.length === 9) {
+                        signalingRef.current?.send({
+                          type: "disconnect-peer",
+                          targetDeskId: cleanId,
+                          fromDeskId: deskId,
+                        });
+                      }
+                      setConnectingState(null);
+                    }}
+                    className="rounded-lg bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 text-[11px] font-medium text-zinc-300 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
                 </div>
               )}
             </div>

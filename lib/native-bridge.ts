@@ -6,6 +6,8 @@ declare global {
       isNativeAndroid?: boolean;
     };
     __anycraftNativeFrame?: (base64Jpeg: string, w: number, h: number) => void;
+    __anycraftNativeStarted?: () => void;
+    __anycraftNativeError?: (msg: string) => void;
   }
 }
 
@@ -35,12 +37,57 @@ export function captureNativeAndroidScreen(): Promise<MediaStream> {
       return;
     }
 
-    let resolved = false;
+    // Paint initial frame so captureStream has a live video track immediately
+    ctx.fillStyle = "#09090b";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#e4e4e7";
+    ctx.font = "bold 28px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("Connecting mobile screen...", canvas.width / 2, canvas.height / 2);
+
+    let settled = false;
+    const cleanupCallbacks = () => {
+      window.__anycraftNativeStarted = undefined;
+      window.__anycraftNativeError = undefined;
+    };
+
     const timeout = setTimeout(() => {
-      if (!resolved) {
+      if (!settled) {
+        settled = true;
+        cleanupCallbacks();
         reject(new Error("Timed out waiting for Android screen permission."));
       }
-    }, 20000);
+    }, 30000);
+
+    const resolveStream = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      cleanupCallbacks();
+      const stream = canvas.captureStream(24);
+      const track = stream.getVideoTracks()[0];
+      const origStop = track.stop.bind(track);
+      track.stop = () => {
+        window.__anycraftNativeFrame = undefined;
+        bridge.stopScreenShare();
+        origStop();
+      };
+      resolve(stream);
+    };
+
+    window.__anycraftNativeStarted = () => {
+      resolveStream();
+    };
+
+    window.__anycraftNativeError = (msg: string) => {
+      if (!settled) {
+        settled = true;
+        clearTimeout(timeout);
+        cleanupCallbacks();
+        window.__anycraftNativeFrame = undefined;
+        reject(new Error(msg || "Screen capture permission denied."));
+      }
+    };
 
     const img = new Image();
     let drawing = false;
@@ -50,24 +97,12 @@ export function captureNativeAndroidScreen(): Promise<MediaStream> {
         canvas.width = w;
         canvas.height = h;
       }
+      if (!settled) resolveStream();
       if (drawing) return;
       drawing = true;
       img.onload = () => {
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         drawing = false;
-        if (!resolved) {
-          resolved = true;
-          clearTimeout(timeout);
-          const stream = canvas.captureStream(24);
-          const track = stream.getVideoTracks()[0];
-          const origStop = track.stop.bind(track);
-          track.stop = () => {
-            window.__anycraftNativeFrame = undefined;
-            bridge.stopScreenShare();
-            origStop();
-          };
-          resolve(stream);
-        }
       };
       img.onerror = () => {
         drawing = false;
