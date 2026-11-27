@@ -188,6 +188,7 @@ app.prepare().then(() => {
             fromDeskId: fromId,
             fromAlias: msg.fromAlias,
             fromDeviceType: msg.fromDeviceType,
+            mode: msg.mode,
           });
           break;
         }

@@ -30,6 +30,9 @@ interface RemoteViewerProps {
   remoteDeskId: string;
   remoteAlias: string;
   remoteStream: MediaStream | null;
+  localStream?: MediaStream | null;
+  isVideoCall?: boolean;
+  mirrorSelf?: boolean;
   isSharingLocal: boolean;
   canScreenShare?: boolean;
   stats: TelemetryStats;
@@ -52,6 +55,9 @@ export function RemoteViewer({
   remoteDeskId,
   remoteAlias,
   remoteStream,
+  localStream = null,
+  isVideoCall = false,
+  mirrorSelf = false,
   isSharingLocal,
   canScreenShare = true,
   stats,
@@ -71,6 +77,7 @@ export function RemoteViewer({
 }: RemoteViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const pipVideoRef = useRef<HTMLVideoElement>(null);
   const hiddenInputRef = useRef<HTMLInputElement>(null);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -112,6 +119,13 @@ export function RemoteViewer({
     }
     vid.play().catch(() => {});
   }, [remoteStream]);
+
+  useEffect(() => {
+    const pip = pipVideoRef.current;
+    if (!pip || !localStream) return;
+    pip.srcObject = localStream;
+    pip.play().catch(() => {});
+  }, [localStream]);
 
   useEffect(() => {
     const onFs = () => setIsFullscreen(Boolean(document.fullscreenElement));
@@ -347,7 +361,7 @@ export function RemoteViewer({
 
         {/* Action Buttons */}
         <div className="flex items-center gap-1.5">
-          {isSharingLocal && onSwitchSource && (
+          {isSharingLocal && !isVideoCall && onSwitchSource && (
             <>
               {canScreenShare && (
                 <button
@@ -367,6 +381,11 @@ export function RemoteViewer({
                 <Video className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Cam</span>
               </button>
+            </>
+          )}
+
+          {(isSharingLocal || isVideoCall) && (
+            <>
               {onFlipCamera && (
                 <button
                   onClick={onFlipCamera}
@@ -547,13 +566,28 @@ export function RemoteViewer({
             ref={videoRef}
             autoPlay
             playsInline
-            muted={isSharingLocal}
+            muted={isSharingLocal && !isVideoCall}
             className="h-full w-full object-contain pointer-events-none"
           />
         ) : (
           <div className="flex flex-col items-center gap-3 text-zinc-400">
             <div className="h-8 w-8 rounded-full border-2 border-red-500 border-t-transparent animate-spin" />
             <p className="text-sm">Establishing ultra-low-latency P2P stream…</p>
+          </div>
+        )}
+
+        {/* 2-Way Video Call Self-View Picture-in-Picture */}
+        {isVideoCall && localStream && (
+          <div className="absolute bottom-4 right-4 z-20 w-28 h-40 sm:w-36 sm:h-48 rounded-2xl overflow-hidden border-2 border-zinc-700/90 bg-zinc-900 shadow-2xl pointer-events-none">
+            <video
+              ref={pipVideoRef}
+              autoPlay
+              playsInline
+              muted
+              className={`h-full w-full object-cover ${
+                mirrorSelf ? "-scale-x-100" : ""
+              }`}
+            />
           </div>
         )}
 

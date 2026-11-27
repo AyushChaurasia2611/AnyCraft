@@ -37,7 +37,9 @@ export function IncomingModal({
             <div>
               <span className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-red-400">
                 <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-                Incoming Connection
+                {request.mode === "videocall"
+                  ? "Incoming Video Call"
+                  : "Incoming Connection"}
               </span>
               <h3 className="text-lg font-semibold text-zinc-100 mt-0.5">
                 {request.fromAlias}
@@ -64,35 +66,47 @@ export function IncomingModal({
         </div>
 
         <div className="mt-5 flex flex-col sm:flex-row gap-2.5">
-          {canScreenShare && (
+          {request.mode === "videocall" ? (
             <button
-              onClick={() => onAccept("screen")}
+              onClick={() => onAccept("camera")}
               className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-3 text-sm font-semibold text-white transition cursor-pointer"
             >
-              <MonitorUp className="h-4 w-4" />
-              Accept & Share Screen
+              <Video className="h-4 w-4" />
+              Answer Video Call
             </button>
+          ) : (
+            <>
+              {canScreenShare && (
+                <button
+                  onClick={() => onAccept("screen")}
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-3 text-sm font-semibold text-white transition cursor-pointer"
+                >
+                  <MonitorUp className="h-4 w-4" />
+                  Accept & Share Screen
+                </button>
+              )}
+              <button
+                onClick={() => onAccept("camera")}
+                className={`flex-1 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition cursor-pointer ${
+                  canScreenShare
+                    ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-100"
+                    : "bg-emerald-600 hover:bg-emerald-500 text-white"
+                }`}
+              >
+                <Video className="h-4 w-4" />
+                {canScreenShare ? "Share Camera" : "Accept & Share Camera"}
+              </button>
+            </>
           )}
-          <button
-            onClick={() => onAccept("camera")}
-            className={`flex-1 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition cursor-pointer ${
-              canScreenShare
-                ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-100"
-                : "bg-emerald-600 hover:bg-emerald-500 text-white"
-            }`}
-          >
-            <Video className="h-4 w-4" />
-            {canScreenShare ? "Share Camera" : "Accept & Share Camera"}
-          </button>
           <button
             onClick={onReject}
             className="inline-flex items-center justify-center rounded-xl bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 px-4 py-3 text-sm font-semibold text-red-400 transition cursor-pointer"
           >
-            Dismiss
+            {request.mode === "videocall" ? "Decline" : "Dismiss"}
           </button>
         </div>
 
-        {!canScreenShare && (
+        {request.mode !== "videocall" && !canScreenShare && (
           <p className="mt-3 text-[11px] text-zinc-500 text-center">
             This mobile browser does not expose screen capture (e.g. iOS Safari
             blocks web screen sharing). Use Android Chrome on HTTPS for mobile

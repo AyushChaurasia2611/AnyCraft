@@ -17,6 +17,7 @@ import {
   Clock,
   Lock,
   Download,
+  Video,
 } from "lucide-react";
 import {
   formatDeskId,
@@ -87,8 +88,11 @@ export default function HomePage() {
     deskId: string;
     alias: string;
     isHost: boolean;
+    isVideoCall?: boolean;
   } | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [localPreviewStream, setLocalPreviewStream] =
+    useState<MediaStream | null>(null);
   const [quality, setQuality] = useState<QualityPreset>("ultra");
   const [contentMode, setContentMode] = useState<ContentMode>("detail");
   const [cameraFacing, setCameraFacing] = useState<"environment" | "user">(
@@ -136,6 +140,7 @@ export default function HomePage() {
     }
     setActivePeer(null);
     setRemoteStream(null);
+    setLocalPreviewStream(null);
     setConnectingState(null);
     setSideOpen(false);
     setRemotePointer(null);
@@ -368,6 +373,7 @@ export default function HomePage() {
             fromDeskId: msg.fromDeskId,
             fromAlias: msg.fromAlias,
             fromDeviceType: msg.fromDeviceType,
+            mode: msg.mode,
           });
           break;
 
@@ -378,20 +384,41 @@ export default function HomePage() {
 
         case "connect-accept": {
           // Viewer side: peer accepted! Start WebRTC offer
-          setConnectingState("Establishing P2P tunnel…");
+          const isVC = msg.mode === "videocall";
+          setConnectingState(
+            isVC ? "Starting 2-way video call…" : "Establishing P2P tunnel…"
+          );
           const updated = saveRecentPeer({
             deskId: msg.fromDeskId,
             alias: msg.fromAlias,
             deviceType: msg.fromDeviceType,
           });
           setRecents(updated);
+
+          const peer = createPeer(msg.fromDeskId, msg.fromAlias, true);
+
+          if (isVC) {
+            try {
+              setCameraFacing("user");
+              const camStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: "user", frameRate: { ideal: 30 } },
+                audio: true,
+              });
+              localStreamRef.current = camStream;
+              setLocalPreviewStream(camStream);
+              peer.attachLocalStream(camStream, "balanced", "motion");
+            } catch {
+              setErrorBanner("Camera/Mic permission needed for Video Call.");
+            }
+          }
+
           setActivePeer({
             deskId: msg.fromDeskId,
             alias: msg.fromAlias,
             isHost: false,
+            isVideoCall: isVC,
           });
 
-          const peer = createPeer(msg.fromDeskId, msg.fromAlias, true);
           const offer = await peer.createOffer();
           sig.send({
             type: "rtc-offer",
@@ -449,7 +476,11 @@ export default function HomePage() {
   }, [activePeer]);
 
   // Connect to remote Desk ID
-  const handleConnect = (e?: React.FormEvent, overrideId?: string) => {
+  const handleConnect = (
+    e?: React.FormEvent,
+    overrideId?: string,
+    mode: "remote" | "videocall" = "remote"
+  ) => {
     e?.preventDefault();
     setErrorBanner(null);
     const cleanId = normalizeDeskId(overrideId ?? targetIdInput);
@@ -457,7 +488,11 @@ export default function HomePage() {
       setErrorBanner("Enter a valid 9-digit AnyCraft Desk ID.");
       return;
     }
-    setConnectingState(`Calling ${formatDeskId(cleanId)}…`);
+    setConnectingState(
+      mode === "videocall"
+        ? `Video calling ${formatDeskId(cleanId)}…`
+        : `Calling ${formatDeskId(cleanId)}…`
+    );
     signalingRef.current?.send({
       type: "connect-request",
       targetDeskId: cleanId,
@@ -465,6 +500,7 @@ export default function HomePage() {
       fromAlias: alias,
       fromDeviceType: deviceType,
       passcode: targetPassInput.trim() || undefined,
+      mode,
     });
   };
 
@@ -486,24 +522,35 @@ export default function HomePage() {
   const handleAcceptIncoming = async (source: "screen" | "camera") => {
     if (!incomingReq) return;
     const req = incomingReq;
+    const isVC = req.mode === "videocall";
     setIncomingReq(null);
 
     try {
+      const facing = isVC ? "user" : cameraFacing;
+      if (isVC) setCameraFacing("user");
       const stream =
         source === "screen"
           ? await captureScreenStream()
           : await navigator.mediaDevices.getUserMedia({
-              video: { facingMode: cameraFacing, frameRate: { ideal: 30 } },
+              video: { facingMode: facing, frameRate: { ideal: 30 } },
               audio: true,
             });
 
       localStreamRef.current = stream;
-      stream.getVideoTracks()[0].onended = () => {
-        handleDisconnect();
-      };
+      if (isVC) {
+        setLocalPreviewStream(stream);
+      } else {
+        stream.getVideoTracks()[0].onended = () => {
+          handleDisconnect();
+        };
+      }
 
       const peer = createPeer(req.fromDeskId, req.fromAlias, false);
-      peer.attachLocalStream(stream, quality, contentMode);
+      peer.attachLocalStream(
+        stream,
+        isVC ? "balanced" : quality,
+        isVC ? "motion" : contentMode
+      );
 
       const updated = saveRecentPeer({
         deskId: req.fromDeskId,
@@ -512,11 +559,14 @@ export default function HomePage() {
       });
       setRecents(updated);
 
-      setRemoteStream(stream);
+      if (!isVC) {
+        setRemoteStream(stream);
+      }
       setActivePeer({
         deskId: req.fromDeskId,
         alias: req.fromAlias,
         isHost: true,
+        isVideoCall: isVC,
       });
 
       signalingRef.current?.send({
@@ -525,6 +575,7 @@ export default function HomePage() {
         fromDeskId: deskId,
         fromAlias: alias,
         fromDeviceType: deviceType,
+        mode: req.mode,
       });
     } catch (err) {
       const msg =
@@ -579,8 +630,15 @@ export default function HomePage() {
       const newTrack = newStream.getVideoTracks()[0];
       await rtcRef.current?.replaceVideoTrack(newTrack, quality, contentMode);
       localStreamRef.current?.getVideoTracks().forEach((t) => t.stop());
-      localStreamRef.current = newStream;
-      setRemoteStream(newStream);
+      if (activePeer?.isVideoCall && localStreamRef.current) {
+        const audioTracks = localStreamRef.current.getAudioTracks();
+        const combined = new MediaStream([newTrack, ...audioTracks]);
+        localStreamRef.current = combined;
+        setLocalPreviewStream(combined);
+      } else {
+        localStreamRef.current = newStream;
+        setRemoteStream(newStream);
+      }
     } catch {
       // Cancelled
     }
@@ -908,7 +966,7 @@ export default function HomePage() {
                   <button
                     type="submit"
                     disabled={Boolean(connectingState)}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-60 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-red-600/25 transition cursor-pointer"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-60 px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-red-600/25 transition cursor-pointer"
                   >
                     {connectingState ? (
                       <span>Connecting…</span>
@@ -918,6 +976,16 @@ export default function HomePage() {
                         <ArrowRight className="h-4 w-4" />
                       </>
                     )}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={Boolean(connectingState)}
+                    onClick={() => handleConnect(undefined, undefined, "videocall")}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 px-4 py-3.5 text-sm font-semibold text-white shadow-lg shadow-emerald-600/20 transition cursor-pointer"
+                    title="Start 2-Way Video Call (both see each other)"
+                  >
+                    <Video className="h-4 w-4" />
+                    <span>Video Call</span>
                   </button>
                 </div>
 
@@ -1104,6 +1172,9 @@ export default function HomePage() {
           remoteDeskId={activePeer.deskId}
           remoteAlias={activePeer.alias}
           remoteStream={remoteStream}
+          localStream={localPreviewStream}
+          isVideoCall={Boolean(activePeer.isVideoCall)}
+          mirrorSelf={cameraFacing === "user"}
           isSharingLocal={activePeer.isHost}
           canScreenShare={canScreenShare}
           stats={stats}
@@ -1124,9 +1195,17 @@ export default function HomePage() {
             setUnreadCount(0);
           }}
           onSwitchSource={activePeer.isHost ? handleSwitchSource : undefined}
-          onFlipCamera={activePeer.isHost ? handleFlipCamera : undefined}
+          onFlipCamera={
+            activePeer.isHost || activePeer.isVideoCall
+              ? handleFlipCamera
+              : undefined
+          }
           micMuted={micMuted}
-          onToggleMic={activePeer.isHost ? handleToggleMic : undefined}
+          onToggleMic={
+            activePeer.isHost || activePeer.isVideoCall
+              ? handleToggleMic
+              : undefined
+          }
           onDisconnect={handleDisconnect}
         />
       )}

@@ -16,6 +16,7 @@ export interface IncomingRequest {
   fromAlias: string;
   fromDeviceType: DeviceType;
   passcodeProvided?: boolean;
+  mode?: "remote" | "videocall";
 }
 
 export type SignalingMessage =
@@ -40,12 +41,14 @@ export type SignalingMessage =
       fromAlias: string;
       fromDeviceType: DeviceType;
       passcode?: string;
+      mode?: "remote" | "videocall";
     }
   | {
       type: "incoming-request";
       fromDeskId: string;
       fromAlias: string;
       fromDeviceType: DeviceType;
+      mode?: "remote" | "videocall";
     }
   | {
       type: "connect-accept";
@@ -54,6 +57,7 @@ export type SignalingMessage =
       fromAlias: string;
       fromDeviceType: DeviceType;
       autoAccepted?: boolean;
+      mode?: "remote" | "videocall";
     }
   | {
       type: "connect-reject";
