@@ -1003,6 +1003,43 @@ export default function HomePage() {
             </div>
           )}
         </section>
+
+        {/* Download Native Apps (PC & Mobile) */}
+        <section className="rounded-2xl border border-zinc-800/90 bg-[#121216] p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h3 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
+              <Download className="h-4 w-4 text-red-400" />
+              Download AnyCraft Apps (PC & Mobile)
+            </h3>
+            <p className="text-xs text-zinc-400 mt-1">
+              Install the Android APK for full phone screen sharing, or the Desktop
+              app for 1-click Windows & Mac sessions.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <a
+              href="https://github.com/AyushChaurasia2611/AnyCraft/releases/latest/download/AnyCraft-Android.apk"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-3.5 py-2.5 text-xs font-semibold text-white transition"
+            >
+              <Smartphone className="h-4 w-4" />
+              Android (.apk)
+            </a>
+            <a
+              href="https://github.com/AyushChaurasia2611/AnyCraft/releases/latest/download/AnyCraft-Windows.exe"
+              className="inline-flex items-center gap-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3.5 py-2.5 text-xs font-semibold text-white transition"
+            >
+              <Monitor className="h-4 w-4 text-red-400" />
+              Windows (.exe)
+            </a>
+            <a
+              href="https://github.com/AyushChaurasia2611/AnyCraft/releases/latest/download/AnyCraft-Mac.dmg"
+              className="inline-flex items-center gap-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3.5 py-2.5 text-xs font-semibold text-white transition"
+            >
+              <Monitor className="h-4 w-4 text-zinc-300" />
+              Mac (.dmg)
+            </a>
+          </div>
+        </section>
       </div>
 
       {/* Incoming Connection Modal */}
